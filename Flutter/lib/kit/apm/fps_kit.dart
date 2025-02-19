@@ -1,22 +1,15 @@
-import 'dart:ui';
-
 import 'package:dokit/dokit.dart';
-import 'package:dokit/ui/dokit_btn.dart';
-import 'package:dokit/ui/resident_page.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-import 'package:dokit/widget/dash_decoration.dart';
+import 'package:dokit/kit/apm/apm.dart';
+import 'package:dokit/kit/kit.dart';
 import 'package:dokit/widget/fps_chart.dart';
-
-import 'apm.dart';
+import 'package:flutter/material.dart';
 
 class FpsInfo implements IInfo {
-  int fps;
-  String pageName;
+  int? fps;
+  String? pageName;
 
   @override
-  int getValue() {
+  int? getValue() {
     return fps;
   }
 }
@@ -32,12 +25,12 @@ class FpsKit extends ApmKit {
   @override
   void start() {
     WidgetsBinding.instance.addTimingsCallback((timings) {
-      int fps = 0;
+      var fps = 0;
       timings.forEach((element) {
-        FrameTiming frameTiming = element;
+        var frameTiming = element;
         fps = frameTiming.totalSpan.inMilliseconds;
         if (checkValid(fps)) {
-          FpsInfo fpsInfo = new FpsInfo();
+          var fpsInfo = FpsInfo();
           fpsInfo.fps = fps;
           save(fpsInfo);
         }
@@ -59,7 +52,7 @@ class FpsKit extends ApmKit {
 
   @override
   Widget createDisplayPage() {
-    return new FpsPage();
+    return FpsPage();
   }
 
   @override
@@ -78,8 +71,8 @@ class FpsPage extends StatefulWidget {
 class FpsPageState extends State<FpsPage> {
   @override
   Widget build(BuildContext context) {
-    FpsKit kit = ApmKitManager.instance.getKit<FpsKit>(ApmKitName.KIT_FPS);
-    List<IInfo> list = new List();
+    var kit = ApmKitManager.instance.getKit<FpsKit>(ApmKitName.KIT_FPS);
+    var list = <IInfo>[];
     if (kit != null) {
       list = kit.storage.getAll();
     }
@@ -93,9 +86,9 @@ class FpsPageState extends State<FpsPage> {
               child: Row(
                 children: [
                   Container(
-                    child: Image.asset('images/dk_fps_chart.png',
-                        package: DoKit.PACKAGE_NAME, height: 16, width: 16),
                     margin: EdgeInsets.only(left: 22, right: 6),
+                    child: Image.asset('images/dk_fps_chart.png',
+                        package: DK_PACKAGE_NAME, height: 16, width: 16),
                   ),
                   Text('最近240帧耗时',
                       style: TextStyle(

@@ -1,40 +1,45 @@
+import 'package:dokit/dokit.dart';
 import 'package:dokit/kit/apm/apm.dart';
+import 'package:dokit/ui/resident_page.dart';
 import 'package:flutter/material.dart';
 
-import '../dokit.dart';
-import 'resident_page.dart';
-import 'dokit_app.dart';
+// DoKitBtn 点击事件回调
+// 参数说明：
+// true : dokit面板展开
+// false: dokit面板收起
+typedef DoKitBtnClickedCallback = void Function(bool);
 
 // 入口btn
 // ignore: must_be_immutable
 class DoKitBtn extends StatefulWidget {
-  static GlobalKey<DoKitBtnState> doKitBtnKey = new GlobalKey<DoKitBtnState>();
-  OverlayEntry overlayEntry;
-
   DoKitBtn() : super(key: doKitBtnKey);
 
+  static GlobalKey<DoKitBtnState> doKitBtnKey = GlobalKey<DoKitBtnState>();
+  OverlayEntry? overlayEntry;
+  DoKitBtnClickedCallback? btnClickCallback;
+
   @override
-  DoKitBtnState createState() => DoKitBtnState(overlayEntry);
+  DoKitBtnState createState() => DoKitBtnState(overlayEntry!);
 
   void addToOverlay() {
     assert(overlayEntry == null);
-    overlayEntry = new OverlayEntry(builder: (context) {
+    overlayEntry = OverlayEntry(builder: (BuildContext context) {
       return this;
     });
-    OverlayState rootOverlay = doKitOverlayKey.currentState;
+    final rootOverlay = doKitOverlayKey.currentState;
     assert(rootOverlay != null);
-    rootOverlay.insert(overlayEntry);
+    rootOverlay?.insert(overlayEntry!);
     ApmKitManager.instance.startUp();
   }
 }
 
 class DoKitBtnState extends State<DoKitBtn> {
-  Offset offsetA; //按钮的初始位置
-  OverlayEntry owner;
-  OverlayEntry debugPage;
-  bool showDebugPage = false;
-
   DoKitBtnState(this.owner);
+
+  Offset? offsetA; //按钮的初始位置
+  final OverlayEntry owner;
+  OverlayEntry? debugPage;
+  bool showDebugPage = false;
 
   @override
   Widget build(BuildContext context) {
@@ -44,31 +49,22 @@ class DoKitBtnState extends State<DoKitBtn> {
         right: offsetA == null ? 20 : null,
         bottom: offsetA == null ? 120 : null,
         child: Draggable(
-            child: Container(
-              width: 70,
-              height: 70,
-              alignment: Alignment.center,
-              child: FlatButton(
-                padding: EdgeInsets.all(0),
-                child: Image.asset('images/dokit_flutter_btn.png',
-                    package: DoKit.PACKAGE_NAME, height: 70, width: 70),
-                onPressed: openDebugPage,
-              ),
-            ),
             feedback: Container(
               width: 70,
               height: 70,
               alignment: Alignment.center,
-              child: FlatButton(
-                padding: EdgeInsets.all(0),
-                child: Image.asset('images/dokit_flutter_btn.png',
-                    package: DoKit.PACKAGE_NAME, height: 70, width: 70),
+              child: TextButton(
+                style: ButtonStyle(
+                  padding: WidgetStateProperty.all(EdgeInsets.all(0)),
+                ),
                 onPressed: openDebugPage,
+                child: Image.asset('images/dokit_flutter_btn.png',
+                    package: DK_PACKAGE_NAME, height: 70, width: 70),
               ),
             ),
             childWhenDragging: Container(),
             onDragEnd: (DraggableDetails detail) {
-              Offset offset = detail.offset;
+              final offset = detail.offset;
               setState(() {
                 final size = MediaQuery.of(context).size;
                 final width = size.width;
@@ -90,24 +86,39 @@ class DoKitBtnState extends State<DoKitBtn> {
                 offsetA = Offset(x, y);
               });
             },
-            onDraggableCanceled: (Velocity velocity, Offset offset) {}));
+            onDraggableCanceled: (Velocity velocity, Offset offset) {},
+            child: Container(
+              width: 70,
+              height: 70,
+              alignment: Alignment.center,
+              child: TextButton(
+                style: ButtonStyle(
+                  padding: MaterialStateProperty.all(EdgeInsets.all(0)),
+                ),
+                child: Image.asset('images/dokit_flutter_btn.png',
+                    package: DK_PACKAGE_NAME, height: 70, width: 70),
+                onPressed: openDebugPage,
+              ),
+            )));
   }
 
-  openDebugPage() {
-    debugPage ??= new OverlayEntry(builder: (context) {
+  void openDebugPage() {
+    debugPage ??= OverlayEntry(builder: (BuildContext context) {
       return ResidentPage();
     });
     if (showDebugPage) {
       closeDebugPage();
     } else {
-      doKitOverlayKey.currentState.insert(debugPage, below: owner);
+      doKitOverlayKey.currentState?.insert(debugPage!, below: owner);
       showDebugPage = true;
     }
+
+    widget.btnClickCallback!(showDebugPage);
   }
 
-  closeDebugPage() {
+  void closeDebugPage() {
     if (showDebugPage && debugPage != null) {
-      debugPage.remove();
+      debugPage!.remove();
       showDebugPage = false;
     }
   }

@@ -1,34 +1,33 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-
 import 'dart:typed_data';
 
 import 'package:dokit/kit/apm/apm.dart';
 import 'package:dokit/kit/apm/http_kit.dart';
 
 class DoKitHttpOverrides extends HttpOverrides {
-  final HttpOverrides origin;
-
   DoKitHttpOverrides(this.origin);
 
+  final HttpOverrides? origin;
+
   @override
-  HttpClient createHttpClient(SecurityContext context) {
+  HttpClient createHttpClient(SecurityContext? context) {
     if (origin != null) {
-      return DoKitHttpClient(origin.createHttpClient(context));
+      return DoKitHttpClient(origin!.createHttpClient(context));
     }
     HttpOverrides.global = null;
-    HttpClient client = DoKitHttpClient(new HttpClient(context: context));
+    final HttpClient client = DoKitHttpClient(HttpClient(context: context));
     HttpOverrides.global = this;
     return client;
   }
 }
 
 class DoKitHttpClient implements HttpClient {
-  final HttpClient origin;
-  HttpInfo httpInfo;
-
   DoKitHttpClient(this.origin);
+
+  final HttpClient origin;
+  HttpInfo? httpInfo;
 
   @override
   set autoUncompress(bool value) => origin.autoUncompress = value;
@@ -43,22 +42,22 @@ class DoKitHttpClient implements HttpClient {
   Duration get idleTimeout => origin.idleTimeout;
 
   @override
-  set connectionTimeout(Duration value) => origin.connectionTimeout = value;
+  set connectionTimeout(Duration? value) => origin.connectionTimeout = value;
 
   @override
-  Duration get connectionTimeout => origin.connectionTimeout;
+  Duration? get connectionTimeout => origin.connectionTimeout;
 
   @override
-  set maxConnectionsPerHost(int value) => origin.maxConnectionsPerHost = value;
+  set maxConnectionsPerHost(int? value) => origin.maxConnectionsPerHost = value;
 
   @override
-  int get maxConnectionsPerHost => origin.maxConnectionsPerHost;
+  int? get maxConnectionsPerHost => origin.maxConnectionsPerHost;
 
   @override
-  set userAgent(String value) => origin.userAgent = value;
+  set userAgent(String? value) => origin.userAgent = value;
 
   @override
-  String get userAgent => origin.userAgent;
+  String? get userAgent => origin.userAgent;
 
   @override
   void addCredentials(
@@ -74,20 +73,22 @@ class DoKitHttpClient implements HttpClient {
 
   @override
   set authenticate(
-      Future<bool> Function(Uri url, String scheme, String realm) f) {
-    origin.authenticate = f;
+      Future<bool> Function(Uri url, String scheme, String realm)? f) {
+    origin.authenticate =
+        f as Future<bool> Function(Uri url, String scheme, String? realm);
   }
 
   @override
   set authenticateProxy(
-      Future<bool> Function(String host, int port, String scheme, String realm)
+      Future<bool> Function(String host, int port, String scheme, String realm)?
           f) {
-    origin.authenticateProxy = f;
+    origin.authenticateProxy = f as Future<bool> Function(
+        String host, int port, String scheme, String? realm);
   }
 
   @override
   set badCertificateCallback(
-      bool Function(X509Certificate cert, String host, int port) callback) {
+      bool Function(X509Certificate cert, String host, int port)? callback) {
     origin.badCertificateCallback = callback;
   }
 
@@ -97,26 +98,26 @@ class DoKitHttpClient implements HttpClient {
   }
 
   @override
-  set findProxy(String Function(Uri url) f) {
+  set findProxy(String Function(Uri url)? f) {
     origin.findProxy = f;
   }
 
   Future<HttpClientRequest> monitor(Future<HttpClientRequest> future) async {
-    future.catchError((error, [StackTrace stackTrace]) {
-      if (httpInfo == null) {
-        httpInfo = new HttpInfo.error(error.toString());
-        HttpKit kit = ApmKitManager.instance.getKit(ApmKitName.KIT_HTTP);
-        kit.save(httpInfo);
-      }
-    });
-    HttpClientRequest request = await future;
-    if (httpInfo == null) {
-      httpInfo = new HttpInfo(request.uri, request.method);
-    }
-    HttpKit kit = ApmKitManager.instance.getKit(ApmKitName.KIT_HTTP);
-    kit.save(httpInfo);
+  try {
+    final request = await future;
+    httpInfo ??= HttpInfo(request.uri, request.method);
+    final kit = ApmKitManager.instance.getKit(ApmKitName.KIT_HTTP);
+    kit?.save(httpInfo);
     return DoKitHttpClientRequest(request, httpInfo);
+  } catch (error) {
+    if (httpInfo == null) {
+      httpInfo = HttpInfo.error(error.toString());
+      final kit = ApmKitManager.instance.getKit(ApmKitName.KIT_HTTP);
+      kit?.save(httpInfo);
+    }
+    rethrow;
   }
+}
 
   void addRequestBody(HttpClientRequest request) {
     if (request.method.toUpperCase() != 'GET') {}
@@ -192,13 +193,22 @@ class DoKitHttpClient implements HttpClient {
   Future<HttpClientRequest> putUrl(Uri url) {
     return monitor(origin.postUrl(url));
   }
+
+  @override
+  set connectionFactory(
+      Future<ConnectionTask<Socket>> Function(
+              Uri url, String? proxyHost, int? proxyPort)?
+          f) {}
+
+  @override
+  set keyLog(Function(String line)? callback) {}
 }
 
 class DoKitHttpClientRequest implements HttpClientRequest {
-  final HttpClientRequest origin;
-  final HttpInfo httpInfo;
-
   DoKitHttpClientRequest(this.origin, this.httpInfo);
+
+  final HttpClientRequest origin;
+  final HttpInfo? httpInfo;
 
   @override
   bool get bufferOutput => origin.bufferOutput;
@@ -246,7 +256,7 @@ class DoKitHttpClientRequest implements HttpClientRequest {
   Uri get uri => origin.uri;
 
   @override
-  HttpConnectionInfo get connectionInfo => origin.connectionInfo;
+  HttpConnectionInfo? get connectionInfo => origin.connectionInfo;
 
   @override
   List<Cookie> get cookies => origin.cookies;
@@ -255,12 +265,12 @@ class DoKitHttpClientRequest implements HttpClientRequest {
   Future<HttpClientResponse> get done => origin.done;
 
   @override
-  void write(Object obj) {
+  void write(Object? obj) {
     origin.write(obj);
   }
 
   @override
-  void writeAll(Iterable objects, [String separator = ""]) {
+  void writeAll(Iterable<dynamic> objects, [String separator = '']) {
     origin.writeAll(objects, separator);
   }
 
@@ -270,7 +280,7 @@ class DoKitHttpClientRequest implements HttpClientRequest {
   }
 
   @override
-  void writeln([Object obj = ""]) {
+  void writeln([dynamic obj = '']) {
     origin.writeln(obj);
   }
 
@@ -282,22 +292,22 @@ class DoKitHttpClientRequest implements HttpClientRequest {
 
   void recordParameter(List<int> data) {
     try {
-      httpInfo.request.header = headers?.toString();
-      if (encoding != null) {
-        httpInfo.request.add(encoding.decode(data));
-      }
-    } catch (e) {}
+      httpInfo?.request.header = headers.toString();
+      httpInfo?.request.add(encoding.decode(data));
+    } catch (e) {
+      print(e);
+    }
   }
 
   @override
-  void addError(Object error, [StackTrace stackTrace]) {
+  void addError(Object error, [StackTrace? stackTrace]) {
     origin.addError(error, stackTrace);
   }
 
   @override
-  Future addStream(Stream<List<int>> stream) {
+  Future<dynamic> addStream(Stream<List<int>> stream) {
     stream = stream.asBroadcastStream();
-    stream.listen((event) {
+    stream.listen((List<int> event) {
       recordParameter(event);
     });
     return origin.addStream(stream);
@@ -309,36 +319,37 @@ class DoKitHttpClientRequest implements HttpClientRequest {
   }
 
   Future<HttpClientResponse> monitor(Future<HttpClientResponse> future) async {
-    HttpClientResponse response = await future;
+    final response = await future;
 
     return DoKitHttpClientResponse(response, recordResponse);
   }
 
   void recordResponse(int code, String result, String header, int size) {
-    httpInfo.response.update(code, result, header, size);
+    httpInfo?.response.update(code, result, header, size);
   }
 
   @override
-  Future flush() {
+  Future<dynamic> flush() {
     return origin.flush();
   }
 
-  void abort([Object exception, StackTrace stackTrace]) {
+  @override
+  void abort([Object? exception, StackTrace? stackTrace]) {
     return origin.abort(exception, stackTrace);
   }
 }
 
 extension HttpClientRequestExt on HttpClientRequest {
-  void abort([Object exception, StackTrace stackTrace]) {
+  void abort([Object? exception, StackTrace? stackTrace]) {
     this.abort(exception, stackTrace);
   }
 }
 
 class DoKitHttpClientResponse implements HttpClientResponse {
+  DoKitHttpClientResponse(this.origin, this.recordResponse);
+
   final HttpClientResponse origin;
   final Function(int, String, String, int) recordResponse;
-
-  DoKitHttpClientResponse(this.origin, this.recordResponse);
 
   @override
   Future<bool> any(bool Function(List<int> element) test) {
@@ -347,13 +358,13 @@ class DoKitHttpClientResponse implements HttpClientResponse {
 
   @override
   Stream<List<int>> asBroadcastStream(
-      {void Function(StreamSubscription<List<int>> subscription) onListen,
-      void Function(StreamSubscription<List<int>> subscription) onCancel}) {
+      {void Function(StreamSubscription<List<int>> subscription)? onListen,
+      void Function(StreamSubscription<List<int>> subscription)? onCancel}) {
     return origin.asBroadcastStream(onListen: onListen, onCancel: onCancel);
   }
 
   @override
-  Stream<E> asyncExpand<E>(Stream<E> Function(List<int> event) convert) {
+  Stream<E> asyncExpand<E>(Stream<E>? Function(List<int> event) convert) {
     return asyncExpand(convert);
   }
 
@@ -368,17 +379,17 @@ class DoKitHttpClientResponse implements HttpClientResponse {
   }
 
   @override
-  X509Certificate get certificate => origin.certificate;
+  X509Certificate? get certificate => origin.certificate;
 
   @override
   HttpClientResponseCompressionState get compressionState =>
       origin.compressionState;
 
   @override
-  HttpConnectionInfo get connectionInfo => origin.connectionInfo;
+  HttpConnectionInfo? get connectionInfo => origin.connectionInfo;
 
   @override
-  Future<bool> contains(Object needle) {
+  Future<bool> contains(dynamic needle) {
     return origin.contains(needle);
   }
 
@@ -395,12 +406,12 @@ class DoKitHttpClientResponse implements HttpClientResponse {
 
   @override
   Stream<List<int>> distinct(
-      [bool Function(List<int> previous, List<int> next) equals]) {
+      [bool Function(List<int> previous, List<int> next)? equals]) {
     return origin.distinct(equals);
   }
 
   @override
-  Future<E> drain<E>([E futureValue]) {
+  Future<E> drain<E>([E? futureValue]) {
     return origin.drain(futureValue);
   }
 
@@ -424,7 +435,7 @@ class DoKitHttpClientResponse implements HttpClientResponse {
 
   @override
   Future<List<int>> firstWhere(bool Function(List<int> element) test,
-      {List<int> Function() orElse}) {
+      {List<int> Function()? orElse}) {
     return origin.firstWhere(test, orElse: orElse);
   }
 
@@ -435,13 +446,13 @@ class DoKitHttpClientResponse implements HttpClientResponse {
   }
 
   @override
-  Future forEach(void Function(List<int> element) action) {
+  Future<dynamic> forEach(void Function(List<int> element) action) {
     return origin.forEach(action);
   }
 
   @override
   Stream<List<int>> handleError(Function onError,
-      {bool Function(dynamic error) test}) {
+      {bool Function(dynamic error)? test}) {
     return origin.handleError(onError, test: test);
   }
 
@@ -458,7 +469,7 @@ class DoKitHttpClientResponse implements HttpClientResponse {
   bool get isRedirect => origin.isRedirect;
 
   @override
-  Future<String> join([String separator = ""]) {
+  Future<String> join([String separator = '']) {
     return origin.join(separator);
   }
 
@@ -467,7 +478,7 @@ class DoKitHttpClientResponse implements HttpClientResponse {
 
   @override
   Future<List<int>> lastWhere(bool Function(List<int> element) test,
-      {List<int> Function() orElse}) {
+      {List<int> Function()? orElse}) {
     return origin.lastWhere(test, orElse: orElse);
   }
 
@@ -475,46 +486,45 @@ class DoKitHttpClientResponse implements HttpClientResponse {
   Future<int> get length => origin.length;
 
   bool isTextResponse() {
-    return headers != null &&
-        headers['content-type'] != null &&
+    return headers['content-type'] != null &&
         (headers['content-type'].toString().contains('json') ||
             headers['content-type'].toString().contains('text') ||
             headers['content-type'].toString().contains('xml'));
   }
 
-  Encoding getEncoding() {
-    var charset;
-    if (headers != null &&
-        headers.contentType != null &&
-        headers.contentType.charset != null) {
-      charset = headers.contentType.charset;
+  Encoding? getEncoding() {
+    String charset;
+    if (headers.contentType != null && headers.contentType?.charset != null) {
+      charset = headers.contentType!.charset!;
     } else {
-      charset = "utf-8";
+      charset = 'utf-8';
     }
     return Encoding.getByName(charset);
   }
 
   @override
-  StreamSubscription<List<int>> listen(void Function(List<int> event) onData,
-      {Function onError, void Function() onDone, bool cancelOnError}) {
+  StreamSubscription<List<int>> listen(void Function(List<int> event)? onData,
+      {Function? onError, void Function()? onDone, bool? cancelOnError}) {
+    if (!isTextResponse()) {
+      recordResponse(
+          statusCode, '返回结果不支持解析', headers.toString(), contentLength);
+      return origin.listen(onData,
+          onError: onError, onDone: onDone, cancelOnError: cancelOnError);
+    }
     void onDataWrapper(List<int> result) {
-      onData(result);
+      onData?.call(result);
       try {
-        if (isTextResponse()) {
-          if (getEncoding() != null) {
-            recordResponse(statusCode, getEncoding().decode(result),
-                headers?.toString(), contentLength);
-          } else {
-            recordResponse(
-                statusCode, "返回结果解析失败", headers?.toString(), contentLength);
-          }
+        final encoding = getEncoding();
+        if (encoding != null) {
+          recordResponse(statusCode, encoding.decode(result),
+              headers.toString(), contentLength);
         } else {
           recordResponse(
-              statusCode, "返回结果不支持解析", headers?.toString(), contentLength);
+              statusCode, '返回结果解析失败', headers.toString(), contentLength);
         }
       } catch (e) {
         recordResponse(
-            statusCode, "返回结果解析失败", headers?.toString(), contentLength);
+            statusCode, '返回结果解析失败', headers.toString(), contentLength);
       }
     }
 
@@ -531,7 +541,7 @@ class DoKitHttpClientResponse implements HttpClientResponse {
   bool get persistentConnection => origin.persistentConnection;
 
   @override
-  Future pipe(StreamConsumer<List<int>> streamConsumer) {
+  Future<dynamic> pipe(StreamConsumer<List<int>> streamConsumer) {
     return origin.pipe(streamConsumer);
   }
 
@@ -540,7 +550,7 @@ class DoKitHttpClientResponse implements HttpClientResponse {
 
   @override
   Future<HttpClientResponse> redirect(
-      [String method, Uri url, bool followLoops]) {
+      [String? method, Uri? url, bool? followLoops]) {
     return origin.redirect(method, url, followLoops);
   }
 
@@ -558,7 +568,7 @@ class DoKitHttpClientResponse implements HttpClientResponse {
 
   @override
   Future<List<int>> singleWhere(bool Function(List<int> element) test,
-      {List<int> Function() orElse}) {
+      {List<int> Function()? orElse}) {
     return origin.singleWhere(test, orElse: orElse);
   }
 
@@ -587,7 +597,7 @@ class DoKitHttpClientResponse implements HttpClientResponse {
 
   @override
   Stream<List<int>> timeout(Duration timeLimit,
-      {void Function(EventSink<List<int>> sink) onTimeout}) {
+      {void Function(EventSink<List<int>> sink)? onTimeout}) {
     return origin.timeout(timeLimit, onTimeout: onTimeout);
   }
 
@@ -603,28 +613,29 @@ class DoKitHttpClientResponse implements HttpClientResponse {
 
   @override
   Stream<S> transform<S>(StreamTransformer<List<int>, S> streamTransformer) {
-    Stream s = origin.transform(streamTransformer);
+    var s = origin.transform<S>(streamTransformer);
+    if (!isTextResponse()) {
+      recordResponse(
+          statusCode, '返回结果不支持解析', headers.toString(), contentLength);
+      return s;
+    }
     s = s.asBroadcastStream();
-    s.listen((event) {
-      if (isTextResponse()) {
-        if (event is Uint8List) {
-          Uint8List result = event;
-          if (getEncoding() != null) {
-            recordResponse(statusCode, getEncoding().decode(result.toList()),
-                headers?.toString(), event.length);
-          } else {
-            recordResponse(
-                statusCode, "返回结果解析失败", headers?.toString(), contentLength);
-          }
-        } else if (event is String) {
-          recordResponse(statusCode, event, headers?.toString(), contentLength);
+    s.listen((S event) {
+      if (event is Uint8List) {
+        final Uint8List result = event;
+        var encoding = getEncoding();
+        if (encoding != null) {
+          recordResponse(statusCode, encoding.decode(result.toList()),
+              headers.toString(), event.length);
         } else {
-          recordResponse(statusCode, 'unknown type:${event.runtimeType}',
-              headers?.toString(), contentLength);
+          recordResponse(
+              statusCode, '返回结果解析失败', headers.toString(), contentLength);
         }
+      } else if (event is String) {
+        recordResponse(statusCode, event, headers.toString(), contentLength);
       } else {
-        recordResponse(
-            statusCode, "返回结果不支持解析", headers?.toString(), contentLength);
+        recordResponse(statusCode, 'unknown type:${event.runtimeType}',
+            headers.toString(), contentLength);
       }
     });
     return s;
